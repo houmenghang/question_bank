@@ -1,0 +1,8 @@
+/.vscode
+/city_intros
+/data.json
+/output
+/question_bank_content_spider.py
+/question_bank_title_spider.py
+/temp
+/test.py
