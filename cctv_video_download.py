@@ -2,13 +2,13 @@
 import asyncio
 from bs4 import BeautifulSoup
 import tkinter
+import json
 from time import sleep, time
 from pyppeteer import launcher
 # 第一步 去除浏览器自动化参数
 # 必须在 from pyppeteer import launch 前去除参数
 # 去除自动化 启动参数
 launcher.DEFAULT_ARGS.remove('--enable-automation')
-
 from pyppeteer import launch
 from lxml import etree
 
@@ -30,14 +30,8 @@ proxy_list = [
     '43.240.138.31:8080'
 ]
 
-mfw_url = r'https://tv.cctv.com/lm/bjjt/index.shtml#&Type=0'
+mfw_url = r'https://api.cntv.cn/NewVideo/getVideoListByColumn?id=TOPC1451557052519584&n=20&sort=desc&p={}&mode=0&serviceId=tvcctv&d={}'
 
-
-def get_city_list():
-    #cities = json.load(open('city_list.json', encoding='utf-8'))
-    #random.shuffle(cities)
-    cities = ['杭州']
-    return cities
 
 async def main():
     # 浏览器 启动参数
@@ -67,26 +61,27 @@ async def main():
     tk.quit()
     await page.setViewport(viewport={'width': width, 'height': height})
     await page.evaluateOnNewDocument(js_text)  # 本页刷新后值不变，自动执行js
-
-    print(mfw_url)
-    await page.goto(mfw_url)
-    await page.waitFor(300)
-    start_page_num = 1
-    end_page_num = 50
-    page = await (await page.xpath('//*[@id="SUBD1551079867360714"]/div/div/div[4]/a[8]'))[0].click()
-                                        #//*[@id="SUBD1551079867360714"]/div/div/div[4]/a[7]
-
-                                        
-    await asyncio.sleep(1)
-    page_list = await browser.pages()
-    page = page_list[-1]
-    page_text = await page.content()
-    print()
-    bs = BeautifulSoup(page_text, 'html.parser')
-    div_list = bs.findAll(class_ = "pics_list")
-    print(div_list, len(div_list))
-    #a_button_list = BeautifulSoup(, 'html.parser')
-    sleep(30)
+    bjjt_info = []
+    data = json.load(open('bjjt_totle.json', 'r'))
+    for key in data.keys():
+        i = 1
+        while i <= data[key]:  
+            url = mfw_url.format(str(i), key)
+            await page.goto(url)
+            await page.waitFor(2000)
+            await asyncio.sleep(1)
+            page_text = await page.content()
+            bs = BeautifulSoup(page_text,'html.parser')
+            try:
+                sleep(5)
+                bs_dict = eval(bs.pre.text)
+                bjjt_info.append({key+'_'+str(i):bs_dict})
+            except:
+                with open('bjjt2.log', 'a+') as f:
+                    f.write('error info key:{} paging: {} \n'.format(key, str(i)))
+            i+=1
+    with open('bjjt_info3.json', 'w+') as f:
+        json.dump(bjjt_info, f)
     await browser.close()
 
 asyncio.get_event_loop().run_until_complete(main())
